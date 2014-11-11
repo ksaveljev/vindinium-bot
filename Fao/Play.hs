@@ -1,11 +1,9 @@
-module Vindinium.Play
-        ( playTraining
-        , playArena
-        )
-    where
+module Fao.Play ( playTraining
+                , playArena
+                ) where
 
-import Vindinium.Types
-import Vindinium.Api
+import Fao.Types
+import Fao.Api
 
 playTraining :: Maybe Int -> Maybe Board -> Bot -> Vindinium State
 playTraining mt mb b = startTraining mt mb >>= playLoop b

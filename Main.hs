@@ -3,8 +3,9 @@ module Main (main) where
 
 import Options.Applicative
 
-import Vindinium
-import Bot
+import Fao.Bot
+import Fao.Types
+import Fao.Play
 
 import Data.String (fromString)
 import Data.Text (pack, unpack)
