@@ -41,7 +41,7 @@ cmd = subparser
 
 runCmd :: Cmd -> IO ()
 runCmd c  = do
-    s <- runFao (cmdSettings c) (BotState undefined) $
+    s <- runFao (cmdSettings c) (BotState undefined undefined undefined) $
         case c of
             (Training _ t b) -> playTraining t b bot
             (Arena _)        -> playArena bot

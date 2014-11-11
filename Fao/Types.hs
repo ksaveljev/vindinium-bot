@@ -16,6 +16,10 @@ module Fao.Types ( Fao
                  , Tile (..)
                  , Pos (..)
                  , Dir (..)
+                 , Distance
+                 , HeroBoardMap (..)
+                 , Path (..)
+                 , BoardMap
                  ) where
 
 import Data.Text (Text, pack)
@@ -26,6 +30,7 @@ import Control.Monad (mzero)
 import Control.Monad.Reader (MonadReader, ReaderT, runReaderT, asks)
 import Control.Monad.State (MonadState, StateT, evalStateT)
 import Control.Monad.IO.Class (MonadIO)
+import qualified Data.Map as M
 
 newtype Key = Key Text deriving (Show, Eq)
 
@@ -45,8 +50,15 @@ data Bot = Bot { initialize :: Fao ()
                }
 
 data BotState = BotState { vindinium :: Vindinium
-                           -- TODO: boardMap for all heroes
+                         , heroBoardMap :: HeroBoardMap
+                         , heroSafeBoardMap :: HeroBoardMap
                          }
+
+newtype Path  = Path [Pos] deriving (Show, Eq)
+
+type BoardMap = Pos -> Maybe Path
+
+newtype HeroBoardMap = HeroBoardMap (M.Map Hero BoardMap)
 
 data Vindinium = Vindinium { vindiniumGame    :: Game
                            , vindiniumHero    :: Hero
@@ -65,7 +77,7 @@ data Game = Game { gameId       :: GameId
                  , gameFinished :: Bool
                  } deriving (Show, Eq)
 
-newtype HeroId = HeroId Int deriving (Show, Eq)
+newtype HeroId = HeroId Int deriving (Show, Eq, Ord)
 
 data Hero = Hero { heroId        :: HeroId
                  , heroName      :: Text
@@ -77,7 +89,7 @@ data Hero = Hero { heroId        :: HeroId
                  , heroMineCount :: Integer
                  , heroSpawnPos  :: Pos
                  , heroCrashed   :: Bool
-                 } deriving (Show, Eq)
+                 } deriving (Show, Eq, Ord)
 
 data Board = Board { boardSize  :: Int
                    , boardTiles :: [Tile]
@@ -92,10 +104,12 @@ data Tile = FreeTile
 
 data Pos = Pos { posX :: Int
                , posY :: Int
-               } deriving (Show, Eq)
+               } deriving (Show, Eq, Ord)
 
 data Dir = Stay | North | South | East | West
     deriving (Show, Eq)
+
+type Distance = Pos -> Pos -> Int -- Distance function between two positions on a board
 
 instance ToJSON Key where
     toJSON (Key k) = String k
