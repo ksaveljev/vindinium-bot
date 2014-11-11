@@ -25,6 +25,7 @@ executable vindinium-bot
                      , text
                      , random
                      , aeson
+                     , network
                      , HTTP
                      , http-types
                      , http-client

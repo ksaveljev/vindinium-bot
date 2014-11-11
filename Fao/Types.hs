@@ -1,12 +1,13 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Fao.Types ( Vindinium
-                 , runVindinium
+module Fao.Types ( Fao
+                 , runFao
                  , asks
                  , Settings (..)
                  , Key (..)
-                 , Bot
-                 , State (..)
+                 , Bot(..)
+                 , BotState(..)
+                 , Vindinium (..)
                  , GameId (..)
                  , Game (..)
                  , HeroId (..)
@@ -23,6 +24,7 @@ import Data.Monoid ((<>))
 import Control.Applicative (Applicative, (<$>), (<*>))
 import Control.Monad (mzero)
 import Control.Monad.Reader (MonadReader, ReaderT, runReaderT, asks)
+import Control.Monad.State (MonadState, StateT, evalStateT)
 import Control.Monad.IO.Class (MonadIO)
 
 newtype Key = Key Text deriving (Show, Eq)
@@ -32,54 +34,54 @@ data Settings = Settings {
   , settingsUrl :: Text
 } deriving (Show, Eq)
 
-newtype Vindinium a = Vindinium { unVindinium :: ReaderT Settings IO a }
-    deriving (Functor, Applicative, Monad, MonadReader Settings, MonadIO)
+newtype Fao a = Fao { unFao :: StateT BotState (ReaderT Settings IO) a }
+    deriving (Functor, Applicative, Monad, MonadReader Settings, MonadState BotState, MonadIO)
 
-runVindinium :: Settings -> Vindinium a -> IO a
-runVindinium s = flip runReaderT s . unVindinium
+runFao :: Settings -> BotState -> Fao a -> IO a
+runFao s st = flip runReaderT s . flip evalStateT st . unFao
 
-type Bot = State -> Vindinium Dir
+data Bot = Bot { initialize :: Fao ()
+               , nextMove :: Fao Dir
+               }
 
-data State = State {
-    stateGame    :: Game
-  , stateHero    :: Hero
-  , stateToken   :: Text
-  , stateViewUrl :: Text
-  , statePlayUrl :: Text
-} deriving (Show, Eq)
+data BotState = BotState { vindinium :: Vindinium
+                           -- TODO: boardMap for all heroes
+                         }
 
-newtype GameId = GameId Text
-    deriving (Show, Eq)
+data Vindinium = Vindinium { vindiniumGame    :: Game
+                           , vindiniumHero    :: Hero
+                           , vindiniumToken   :: Text
+                           , vindiniumViewUrl :: Text
+                           , vindiniumPlayUrl :: Text
+                           } deriving (Show, Eq)
 
-data Game = Game {
-    gameId       :: GameId
-  , gameTurn     :: Integer
-  , gameMaxTurns :: Integer
-  , gameHeroes   :: [Hero]
-  , gameBoard    :: Board
-  , gameFinished :: Bool
-} deriving (Show, Eq)
+newtype GameId = GameId Text deriving (Show, Eq)
 
-newtype HeroId = HeroId Int
-    deriving (Show, Eq)
+data Game = Game { gameId       :: GameId
+                 , gameTurn     :: Integer
+                 , gameMaxTurns :: Integer
+                 , gameHeroes   :: [Hero]
+                 , gameBoard    :: Board
+                 , gameFinished :: Bool
+                 } deriving (Show, Eq)
 
-data Hero = Hero {
-    heroId        :: HeroId
-  , heroName      :: Text
-  , heroUserId    :: Maybe Text
-  , heroElo       :: Maybe Integer
-  , heroPos       :: Pos
-  , heroLife      :: Integer
-  , heroGold      :: Integer
-  , heroMineCount :: Integer
-  , heroSpawnPos  :: Pos
-  , heroCrashed   :: Bool
-} deriving (Show, Eq)
+newtype HeroId = HeroId Int deriving (Show, Eq)
 
-data Board = Board {
-    boardSize  :: Int
-  , boardTiles :: [Tile]
-} deriving (Show, Eq)
+data Hero = Hero { heroId        :: HeroId
+                 , heroName      :: Text
+                 , heroUserId    :: Maybe Text
+                 , heroElo       :: Maybe Integer
+                 , heroPos       :: Pos
+                 , heroLife      :: Integer
+                 , heroGold      :: Integer
+                 , heroMineCount :: Integer
+                 , heroSpawnPos  :: Pos
+                 , heroCrashed   :: Bool
+                 } deriving (Show, Eq)
+
+data Board = Board { boardSize  :: Int
+                   , boardTiles :: [Tile]
+                   } deriving (Show, Eq)
 
 data Tile = FreeTile
           | WoodTile
@@ -88,10 +90,9 @@ data Tile = FreeTile
           | MineTile (Maybe HeroId)
     deriving (Show, Eq)
 
-data Pos = Pos {
-    posX :: Int
-  , posY :: Int
-} deriving (Show, Eq)
+data Pos = Pos { posX :: Int
+               , posY :: Int
+               } deriving (Show, Eq)
 
 data Dir = Stay | North | South | East | West
     deriving (Show, Eq)
@@ -104,12 +105,12 @@ instance ToJSON Board where
                        , "tiles" .= printTiles (boardTiles b)
                        ]
 
-instance FromJSON State where
-    parseJSON (Object o) = State <$> o .: "game"
-                                 <*> o .: "hero"
-                                 <*> o .: "token"
-                                 <*> o .: "viewUrl"
-                                 <*> o .: "playUrl"
+instance FromJSON Vindinium where
+    parseJSON (Object o) = Vindinium <$> o .: "game"
+                                     <*> o .: "hero"
+                                     <*> o .: "token"
+                                     <*> o .: "viewUrl"
+                                     <*> o .: "playUrl"
     parseJSON _ = mzero
 
 instance FromJSON Game where

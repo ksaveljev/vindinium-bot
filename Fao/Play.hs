@@ -5,16 +5,16 @@ module Fao.Play ( playTraining
 import Fao.Types
 import Fao.Api
 
-playTraining :: Maybe Int -> Maybe Board -> Bot -> Vindinium State
+playTraining :: Maybe Int -> Maybe Board -> Bot -> Fao Vindinium
 playTraining mt mb b = startTraining mt mb >>= playLoop b
 
-playArena :: Bot -> Vindinium State
+playArena :: Bot -> Fao Vindinium
 playArena b = startArena >>= playLoop b
 
-playLoop :: Bot -> State -> Vindinium State
+playLoop :: Bot -> Vindinium -> Fao Vindinium
 playLoop bot state =
-    if (gameFinished . stateGame) state
+    if (gameFinished . vindiniumGame) state
         then return state
         else do
-            newState <- bot state >>= move state
+            newState <- nextMove bot >>= move state
             playLoop bot newState

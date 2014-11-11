@@ -14,7 +14,7 @@ import Control.Monad.IO.Class (liftIO)
 
 import Fao.Types
 
-startTraining :: Maybe Int -> Maybe Board -> Vindinium State
+startTraining :: Maybe Int -> Maybe Board -> Fao Vindinium
 startTraining mi mb = do
     url <- startUrl "training"
     let obj = object ( maybe [] (\i -> [("turns", toJSON i)]) mi
@@ -23,25 +23,25 @@ startTraining mi mb = do
 
     request url obj
 
-move :: State -> Dir -> Vindinium State
+move :: Vindinium -> Dir -> Fao Vindinium
 move s d = do
-    let url = statePlayUrl s
+    let url = vindiniumPlayUrl s
         obj = object [("dir", toJSON d)]
 
     request url obj
 
 
-startArena :: Vindinium State
+startArena :: Fao Vindinium
 startArena = do
     url <- startUrl "arena"
     let obj = object []
 
     request url obj
 
-startUrl :: Text -> Vindinium Text
+startUrl :: Text -> Fao Text
 startUrl v = liftM (\x -> x <> "/api/" <> v) $ asks settingsUrl
 
-request :: Text -> Value -> Vindinium State
+request :: Text -> Value -> Fao Vindinium
 request url val = do
     key <- asks settingsKey
 
