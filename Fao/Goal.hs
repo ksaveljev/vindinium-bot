@@ -1,5 +1,8 @@
 module Fao.Goal ( getGoals
+                , goalScore
                 ) where
+
+import Control.Monad.State (get)
 
 import Fao.Pathfinding
 import Fao.Types
@@ -9,8 +12,14 @@ data Action = Heal | Kill Hero | CaptureMine deriving (Show)
 
 data Goal = Goal Action Pos deriving (Show)
 
-getGoals :: Vindinium -> Fao [Goal]
-getGoals state = do
+goalScore :: Goal -> Fao Int
+goalScore goal = do
+    (BotState state hbm hsbm) <- get
+    undefined
+
+getGoals :: Fao [Goal]
+getGoals = do
+    (BotState state _ _) <- get
     let enemies = getEnemies state
         attackableMines = getMines state
         allTaverns = getTaverns state
@@ -35,7 +44,7 @@ getTaverns s = taverns $ gameBoard $ vindiniumGame s
 -- if there is currently no path to desired destination
 -- then return max possible distance otherwise just return
 -- the actual distance to the given goal position
-goalDistance :: BoardMap -> Goal -> Int
-goalDistance boardMap (Goal _ pos) =
-    let path = boardMap pos
+goalDistance :: HeroBoardMap -> Goal -> Int
+goalDistance heroBoardMap (Goal _ pos) =
+    let path = heroBoardMap pos
     in maybe 9999 distance path

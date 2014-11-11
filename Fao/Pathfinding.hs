@@ -21,29 +21,29 @@ import qualified Data.PSQueue as PSQ
 import Fao.Types
 import Fao.Utils
 
-buildHeroBoardMap :: Vindinium -> HeroBoardMap
-buildHeroBoardMap state =
+buildBoardMap :: Vindinium -> BoardMap
+buildBoardMap state =
     let heroes = gameHeroes $ vindiniumGame state
         constructBoardMap m hero =
-          let boardMap = buildBoardMap state hero
-          in M.insert hero boardMap m
-    in HeroBoardMap $ foldl' constructBoardMap M.empty heroes
+          let bm = buildHeroBoardMap state hero
+          in M.insert hero bm m
+    in BoardMap $ foldl' constructBoardMap M.empty heroes
 
-buildSafeHeroBoardMap :: Vindinium -> HeroBoardMap
-buildSafeHeroBoardMap state =
+buildSafeBoardMap :: Vindinium -> BoardMap
+buildSafeBoardMap state =
     let heroes = gameHeroes $ vindiniumGame state
         constructSafeBoardMap m hero =
-          let safeBoardMap = buildSafeBoardMap state hero
-          in M.insert hero safeBoardMap m
-    in HeroBoardMap $ foldl' constructSafeBoardMap M.empty heroes
+          let sbm = buildSafeHeroBoardMap state hero
+          in M.insert hero sbm m
+    in BoardMap $ foldl' constructSafeBoardMap M.empty heroes
 
-buildBoardMap :: Vindinium -> Hero -> BoardMap
-buildBoardMap state hero =
+buildHeroBoardMap :: Vindinium -> Hero -> HeroBoardMap
+buildHeroBoardMap state hero =
     let start = heroPos hero
     in pathDijkstra (dijkstra (adjacent state start) manhattan start)
 
-buildSafeBoardMap :: Vindinium -> Hero -> BoardMap
-buildSafeBoardMap state hero =
+buildSafeHeroBoardMap :: Vindinium -> Hero -> HeroBoardMap
+buildSafeHeroBoardMap state hero =
     let start = heroPos hero
     in pathDijkstra (dijkstra (adjacentSafe state start) manhattan start)
 

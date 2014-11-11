@@ -2,7 +2,7 @@ module Fao.Play ( playTraining
                 , playArena
                 ) where
 
-import Control.Monad.State (modify)
+import Control.Monad.State (put)
 
 import Fao.Pathfinding
 import Fao.Types
@@ -19,6 +19,6 @@ playLoop bot state =
     if (gameFinished . vindiniumGame) state
         then return state
         else do
-          modify (\_ -> BotState state (buildHeroBoardMap state) (buildSafeHeroBoardMap state))
+          put (BotState state (buildBoardMap state) (buildSafeBoardMap state))
           newState <- nextMove bot >>= move state
           playLoop bot newState

@@ -17,9 +17,9 @@ module Fao.Types ( Fao
                  , Pos (..)
                  , Dir (..)
                  , Distance
-                 , HeroBoardMap (..)
+                 , HeroBoardMap
                  , Path (..)
-                 , BoardMap
+                 , BoardMap (..)
                  ) where
 
 import Data.List (foldl')
@@ -51,15 +51,15 @@ data Bot = Bot { initialize :: Fao ()
                }
 
 data BotState = BotState { vindinium :: Vindinium
-                         , heroBoardMap :: HeroBoardMap
-                         , heroSafeBoardMap :: HeroBoardMap
+                         , boardMap :: BoardMap
+                         , safeBoardMap :: BoardMap
                          }
 
 newtype Path  = Path [Pos] deriving (Show, Eq)
 
-type BoardMap = Pos -> Maybe Path
+type HeroBoardMap = Pos -> Maybe Path
 
-newtype HeroBoardMap = HeroBoardMap (M.Map Hero BoardMap)
+newtype BoardMap = BoardMap (M.Map Hero HeroBoardMap)
 
 data Vindinium = Vindinium { vindiniumGame    :: Game
                            , vindiniumHero    :: Hero

@@ -1,7 +1,5 @@
 module Fao.Bot where
 
-import Control.Monad.State (get)
-
 import Fao.Goal
 import Fao.Types
 
@@ -11,6 +9,5 @@ bot = Bot { initialize = return ()
           }
   where
     findBestGoal = do
-      (BotState state _ _) <- get
-      goals <- getGoals state
+      goals <- getGoals
       undefined
