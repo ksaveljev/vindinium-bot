@@ -22,6 +22,7 @@ module Fao.Types ( Fao
                  , BoardMap
                  ) where
 
+import Data.List (foldl')
 import Data.Text (Text, pack)
 import Data.Aeson
 import Data.Monoid ((<>))
@@ -93,6 +94,8 @@ data Hero = Hero { heroId        :: HeroId
 
 data Board = Board { boardSize  :: Int
                    , boardTiles :: [Tile]
+                   , mines :: [Pos]
+                   , taverns :: [Pos]
                    } deriving (Show, Eq)
 
 data Tile = FreeTile
@@ -171,8 +174,18 @@ instance ToJSON Dir where
     toJSON West = String "West"
 
 parseBoard :: Int -> String -> Board
-parseBoard s t =
-    Board s $ map parse (chunks t)
+parseBoard s txt =
+    --Board s $ map parse (chunks t)
+    let xToPos x sz = uncurry Pos pr
+                      where pr = x `divMod` sz
+        (tls, mns, tvs, _) = foldl' (\(ts,mm,mt,pos) ch ->
+                                      let t = parse ch
+                                      in case t of
+                                          TavernTile -> (t:ts,mm,xToPos pos s:mt,pos+1)
+                                          MineTile _ -> (t:ts, xToPos pos s:mm,mt,pos+1)
+                                          _          -> (t:ts, mm, mt, pos+1)
+                                    ) ([],[],[],0) (chunks txt)
+    in Board s (reverse tls) mns tvs
   where
     chunks []       = []
     chunks [_]      = error "chunks: even chars number"

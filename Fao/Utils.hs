@@ -19,6 +19,9 @@ inBoard b (Pos x y) =
     let s = boardSize b
     in x >= 0 && x < s && y >= 0 && y < s
 
+tilePosition :: Board -> [(Tile, Pos)]
+tilePosition (Board size tiles _ _) = zip tiles [Pos x y | x <- [0..size-1], y <- [0..size-1]]
+
 -- http://en.wikipedia.org/wiki/Taxicab_geometry
 manhattan :: Distance
 manhattan (Pos row1 col1) (Pos row2 col2) = abs (row1 - row2) + abs (col1 - col2)
