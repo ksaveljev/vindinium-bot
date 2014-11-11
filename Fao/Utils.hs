@@ -2,9 +2,14 @@ module Fao.Utils where
 
 import Data.List (deleteBy)
 import Data.Function (on)
+import Control.Monad (msum)
+import Control.Monad.Trans.Maybe
 import qualified Data.Set as S
 
 import Fao.Types
+
+findM :: (Monad m) => (a -> m (Maybe b)) -> [a] -> m (Maybe b)
+findM f = runMaybeT . msum . map (MaybeT . f)
 
 tileAt :: Board -> Pos -> Maybe Tile
 tileAt b p@(Pos x y) =

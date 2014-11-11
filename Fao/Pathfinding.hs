@@ -27,7 +27,7 @@ buildBoardMap state =
         constructBoardMap m hero =
           let bm = buildHeroBoardMap state hero
           in M.insert hero bm m
-    in BoardMap $ foldl' constructBoardMap M.empty heroes
+    in foldl' constructBoardMap M.empty heroes
 
 buildSafeBoardMap :: Vindinium -> BoardMap
 buildSafeBoardMap state =
@@ -35,7 +35,7 @@ buildSafeBoardMap state =
         constructSafeBoardMap m hero =
           let sbm = buildSafeHeroBoardMap state hero
           in M.insert hero sbm m
-    in BoardMap $ foldl' constructSafeBoardMap M.empty heroes
+    in foldl' constructSafeBoardMap M.empty heroes
 
 buildHeroBoardMap :: Vindinium -> Hero -> HeroBoardMap
 buildHeroBoardMap state hero =

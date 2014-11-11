@@ -19,7 +19,7 @@ module Fao.Types ( Fao
                  , Distance
                  , HeroBoardMap
                  , Path (..)
-                 , BoardMap (..)
+                 , BoardMap
                  ) where
 
 import Data.List (foldl')
@@ -59,7 +59,7 @@ newtype Path  = Path [Pos] deriving (Show, Eq)
 
 type HeroBoardMap = Pos -> Maybe Path
 
-newtype BoardMap = BoardMap (M.Map Hero HeroBoardMap)
+type BoardMap = M.Map Hero HeroBoardMap
 
 data Vindinium = Vindinium { vindiniumGame    :: Game
                            , vindiniumHero    :: Hero
