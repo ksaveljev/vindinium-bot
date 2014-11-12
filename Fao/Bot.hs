@@ -9,7 +9,7 @@ import Fao.Goal
 import Fao.Types
 import Fao.Utils
 
-import Debug.Trace
+--import Debug.Trace
 
 bot :: Bot
 bot = Bot { initialize = return ()
@@ -35,11 +35,13 @@ bot = Bot { initialize = return ()
               Nothing -> return Nothing
               _ -> return $ Just g
       bestAvailableGoal <- findM reachableGoal bestGoals
+      {-
       trace ("Turn number: " ++ show ((gameTurn . vindiniumGame) state) ++ "\n" ++
                           "Our hero: health = " ++ show (heroLife ourHero) ++ "\n" ++
                           "Best goals: " ++ show bestGoals ++ "\n" ++
                           "Best available goal: " ++ show bestAvailableGoal ++ "\n"
                          ) $ return ()
+                         -}
       case bestAvailableGoal of
         Nothing -> return Stay
         (Just (Goal action pos, s, _)) -> do

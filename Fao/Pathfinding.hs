@@ -14,6 +14,7 @@ import Data.PSQueue (PSQ, Binding(..))
 import Control.Applicative ((<$>))
 import Control.Monad (unless, forM_)
 import Control.Monad.State (execState, get, modify)
+import Control.Parallel.Strategies (rpar, parMap)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.PSQueue as PSQ
@@ -24,11 +25,26 @@ import Fao.Utils
 buildBoardMap :: Vindinium -> BoardMap
 buildBoardMap state =
     let heroes = gameHeroes $ vindiniumGame state
+        makeHeroBoardMap hero@(Hero {heroId = hId}) = (hId, buildHeroBoardMap state hero)
+    in M.fromList $ parMap rpar makeHeroBoardMap heroes
+
+buildSafeBoardMap :: Vindinium -> BoardMap
+buildSafeBoardMap state =
+    let heroes = gameHeroes $ vindiniumGame state
+        makeSafeHeroBoardMap hero@(Hero {heroId = hId}) = (hId, buildSafeHeroBoardMap state hero)
+    in M.fromList $ parMap rpar makeSafeHeroBoardMap heroes
+
+{-
+buildBoardMap :: Vindinium -> BoardMap
+buildBoardMap state =
+    let heroes = gameHeroes $ vindiniumGame state
         constructBoardMap m hero =
           let bm = buildHeroBoardMap state hero
           in M.insert hero bm m
     in foldl' constructBoardMap M.empty heroes
+    -}
 
+{-
 buildSafeBoardMap :: Vindinium -> BoardMap
 buildSafeBoardMap state =
     let heroes = gameHeroes $ vindiniumGame state
@@ -36,6 +52,7 @@ buildSafeBoardMap state =
           let sbm = buildSafeHeroBoardMap state hero
           in M.insert hero sbm m
     in foldl' constructSafeBoardMap M.empty heroes
+    -}
 
 buildHeroBoardMap :: Vindinium -> Hero -> HeroBoardMap
 buildHeroBoardMap state hero =

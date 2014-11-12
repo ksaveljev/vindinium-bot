@@ -59,7 +59,7 @@ newtype Path  = Path [Pos] deriving (Show, Eq)
 
 type HeroBoardMap = Pos -> Maybe Path
 
-type BoardMap = M.Map Hero HeroBoardMap
+type BoardMap = M.Map HeroId HeroBoardMap
 
 data Vindinium = Vindinium { vindiniumGame    :: Game
                            , vindiniumHero    :: Hero

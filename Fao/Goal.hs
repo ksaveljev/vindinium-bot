@@ -22,8 +22,8 @@ heroBoardMap action = do
     (BotState state bm sbm) <- get
     let ourHero = vindiniumHero state
         hbm = case action of
-                (Kill _) -> fromJust $ M.lookup ourHero bm
-                _ -> fromJust $ M.lookup ourHero sbm
+                (Kill _) -> fromJust $ M.lookup (heroId ourHero) bm
+                _ -> fromJust $ M.lookup (heroId ourHero) sbm
     return hbm
 
 canKill :: Hero -> Hero -> Int -> Bool
