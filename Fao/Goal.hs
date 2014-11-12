@@ -33,7 +33,9 @@ canKill assassin victim dist =
     in assassinLife - dist > victimLife + 20
 
 needToHeal :: Hero -> Int -> Bool
-needToHeal hero dist = fromIntegral (heroLife hero) <= max (90 - dist * 5) 10
+needToHeal hero enemyDistance = if enemyDistance > 1
+                                  then heroLife hero < 21
+                                  else True
 
 loseEverything :: Hero -> Int
 loseEverything hero = negate (10 * fromIntegral (heroMineCount hero))
@@ -44,29 +46,40 @@ tooMuchHealth hero = heroLife hero > 90
 canCaptureMine :: Hero -> Int -> Bool
 canCaptureMine ourHero dist = fromIntegral (heroLife ourHero) - dist > 20
 
+nearestEnemy :: Fao Int
+nearestEnemy = do
+    (BotState state _ _) <- get
+    hbm <- heroBoardMap (Kill undefined)
+    let enemies = getEnemies state
+    return $ minimum $ map (\enemy -> maybe 9999 distance (hbm $ heroPos enemy)) enemies
+
 goalScore :: Goal -> Fao Int
 goalScore (Goal Heal pos) = do
     (BotState state _ _) <- get
     hbm <- heroBoardMap Heal
+    enemyDistance <- nearestEnemy
     let ourHero = vindiniumHero state
         calculateScore path =
           let dist = distance path
           in case () of
                _
-                | needToHeal ourHero dist -> 9999 -- negate (loseEverything ourHero)
+                | needToHeal ourHero enemyDistance -> 9999 -- negate (loseEverything ourHero)
                 | tooMuchHealth ourHero -> loseEverything ourHero
                 | dist > 1 -> dist
-                | otherwise -> dist * (-20)
+                | otherwise -> if heroLife ourHero < 81 then 9999 else dist * (-20)
     return $ maybe (-9999) calculateScore (hbm pos)
 
 goalScore (Goal CaptureMine pos) = do
     (BotState state _ _) <- get
     hbm <- heroBoardMap CaptureMine
+    enemyDistance <- nearestEnemy
     let ourHero = vindiniumHero state
         calculateScore path =
           let dist = distance path
           in if canCaptureMine ourHero dist
-               then 100
+               then if enemyDistance > 1
+                      then 100
+                      else 100 - (100 `div` enemyDistance)
                else loseEverything ourHero
     return $ maybe (-9999) calculateScore (hbm pos)
 
