@@ -1,6 +1,6 @@
 module Fao.Utils where
 
-import Data.List (deleteBy)
+import Data.List (deleteBy, foldl')
 import Data.Function (on)
 import Control.Monad (msum)
 import Control.Monad.Trans.Maybe
@@ -44,7 +44,7 @@ dirFromPos (Pos fx fy) (Pos tx ty) =
 
 adjacentTiles :: Board -> Pos -> S.Set Pos
 adjacentTiles board (Pos x y) =
-    S.fromList $ foldl (\ps p -> if inBoard board p then p:ps else ps) [] [Pos x $ y+1, Pos x $ y-1, Pos (x+1) y, Pos (x-1) y]
+    S.fromList $ foldl' (\ps p -> if inBoard board p then p:ps else ps) [] [Pos x $ y+1, Pos x $ y-1, Pos (x+1) y, Pos (x-1) y]
 
 -- get all heroes except our own one
 getEnemies :: Vindinium -> [Hero]
