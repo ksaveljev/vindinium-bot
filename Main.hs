@@ -48,6 +48,7 @@ runCmd c  = do
             (Training _ t b) -> playTraining t b bot
             (Arena _)        -> playArena bot
     pushLogStr globalLogger $ toLogStr $ "Game finished: " ++ unpack (vindiniumViewUrl s)
+    flushLogStr globalLogger
 
 main :: IO ()
 main = withSocketsDo $
