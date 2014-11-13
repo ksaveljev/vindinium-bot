@@ -20,6 +20,7 @@ module Fao.Types ( Fao
                  , HeroBoardMap
                  , Path (..)
                  , BoardMap
+                 , Internal (..)
                  ) where
 
 import Data.List (foldl')
@@ -51,7 +52,10 @@ data Bot = Bot { initialize :: Fao ()
                }
 
 data BotState = BotState { vindinium :: Vindinium
-                         , boardMap :: BoardMap
+                         , internal :: Internal
+                         }
+
+data Internal = Internal { boardMap :: BoardMap
                          , safeBoardMap :: BoardMap
                          }
 

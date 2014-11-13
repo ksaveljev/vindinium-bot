@@ -3,13 +3,13 @@ module Fao.Bot where
 import Data.List (sortBy)
 import Data.Maybe (fromJust)
 import Control.Monad.State (get)
+import System.Log.FastLogger
+import Control.Monad.IO.Class (liftIO)
 
 import Fao.Pathfinding
 import Fao.Goal
 import Fao.Types
 import Fao.Utils
-
---import Debug.Trace
 
 bot :: Bot
 bot = Bot { initialize = return ()
@@ -17,7 +17,7 @@ bot = Bot { initialize = return ()
           }
   where
     findBestGoal = do
-      (BotState state _ _) <- get
+      (BotState state _) <- get
       goals <- getGoals
       scores <- mapM goalScore goals
       dist <- mapM goalDistance goals
@@ -35,13 +35,12 @@ bot = Bot { initialize = return ()
               Nothing -> return Nothing
               _ -> return $ Just g
       bestAvailableGoal <- findM reachableGoal bestGoals
-      {-
-      trace ("Turn number: " ++ show ((gameTurn . vindiniumGame) state) ++ "\n" ++
-                          "Our hero: health = " ++ show (heroLife ourHero) ++ "\n" ++
-                          "Best goals: " ++ show bestGoals ++ "\n" ++
-                          "Best available goal: " ++ show bestAvailableGoal ++ "\n"
-                         ) $ return ()
-                         -}
+      liftIO $ pushLogStr globalLogger $ 
+        toLogStr ("Turn number: " ++ show ((gameTurn . vindiniumGame) state) ++ "\n" ++
+                  "Our hero: health = " ++ show (heroLife ourHero) ++ "\n" ++
+                  "Best goals: " ++ show bestGoals ++ "\n" ++
+                  "Best available goal: " ++ show bestAvailableGoal ++ "\n"
+                 )
       case bestAvailableGoal of
         Nothing -> return Stay
         (Just (Goal action pos, s, _)) -> do

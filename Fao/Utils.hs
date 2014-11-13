@@ -4,6 +4,8 @@ import Data.List (deleteBy, foldl')
 import Data.Function (on)
 import Control.Monad (msum)
 import Control.Monad.Trans.Maybe
+import System.Log.FastLogger
+import System.IO.Unsafe (unsafePerformIO)
 import qualified Data.Set as S
 
 import Fao.Types
@@ -56,3 +58,7 @@ isEnemyNearby state pos =
     let board = gameBoard $ vindiniumGame state
         enemies = getEnemies state
     in pos `S.member` S.unions (map (adjacentTiles board . heroPos) enemies)
+
+{-# NOINLINE globalLogger #-}
+globalLogger :: LoggerSet
+globalLogger = unsafePerformIO $ newFileLoggerSet defaultBufSize "./debug.log"

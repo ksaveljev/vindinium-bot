@@ -34,26 +34,6 @@ buildSafeBoardMap state =
         makeSafeHeroBoardMap hero@(Hero {heroId = hId}) = (hId, buildSafeHeroBoardMap state hero)
     in M.fromList $ parMap rpar makeSafeHeroBoardMap heroes
 
-{-
-buildBoardMap :: Vindinium -> BoardMap
-buildBoardMap state =
-    let heroes = gameHeroes $ vindiniumGame state
-        constructBoardMap m hero =
-          let bm = buildHeroBoardMap state hero
-          in M.insert hero bm m
-    in foldl' constructBoardMap M.empty heroes
-    -}
-
-{-
-buildSafeBoardMap :: Vindinium -> BoardMap
-buildSafeBoardMap state =
-    let heroes = gameHeroes $ vindiniumGame state
-        constructSafeBoardMap m hero =
-          let sbm = buildSafeHeroBoardMap state hero
-          in M.insert hero sbm m
-    in foldl' constructSafeBoardMap M.empty heroes
-    -}
-
 buildHeroBoardMap :: Vindinium -> Hero -> HeroBoardMap
 buildHeroBoardMap state hero =
     let start = heroPos hero

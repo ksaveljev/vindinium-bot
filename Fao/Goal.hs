@@ -20,21 +20,21 @@ data Goal = Goal Action Pos deriving (Show)
 
 nextToTavern :: Hero -> Fao Bool
 nextToTavern hero = do
-    (BotState state _ _) <- get
+    (BotState state _) <- get
     let board = gameBoard $ vindiniumGame state
         tavernPositions = getTaverns state
     return $ any (`S.member` adjacentTiles board (heroPos hero)) tavernPositions
 
 enemyNearMine :: Pos -> Fao Bool
 enemyNearMine pos = do
-    (BotState state _ _) <- get
+    (BotState state _) <- get
     let board = gameBoard $ vindiniumGame state
         enemies = getEnemies state
     return $ any (`S.member` adjacentTiles board pos) (map heroPos enemies)
 
 heroBoardMap :: Action -> Fao HeroBoardMap
 heroBoardMap action = do
-    (BotState state bm sbm) <- get
+    (BotState state (Internal bm sbm)) <- get
     let ourHero = vindiniumHero state
         hbm = case action of
                 (Kill _) -> fromJust $ M.lookup (heroId ourHero) bm
@@ -53,7 +53,7 @@ canKill assassin victim dist =
 
 nearestEnemy :: Fao (Hero, Int)
 nearestEnemy = do
-    (BotState state _ _) <- get
+    (BotState state _) <- get
     hbm <- heroBoardMap (Kill undefined)
     let enemies = getEnemies state
     return $ minimum $ map (\enemy -> maybe (enemy, 9999) (\path -> (enemy, distance path)) (hbm $ heroPos enemy)) enemies
@@ -63,7 +63,7 @@ needToHeal hero = heroLife hero < 21
 
 goalScore :: Goal -> Fao Int
 goalScore (Goal action pos) = do
-    (BotState state _ _) <- get
+    (BotState state _) <- get
     let ourHero = vindiniumHero state
     hbm <- heroBoardMap (Kill undefined)
     hsbm <- heroBoardMap Heal
@@ -217,7 +217,7 @@ goalScore (Goal action pos) = do
 
 getGoals :: Fao [Goal]
 getGoals = do
-    (BotState state _ _) <- get
+    (BotState state _) <- get
     let enemies = getEnemies state
         attackableMines = getMines state
         allTaverns = getTaverns state

@@ -19,6 +19,6 @@ playLoop bot state =
     if (gameFinished . vindiniumGame) state
         then return state
         else do
-          put (BotState state (buildBoardMap state) (buildSafeBoardMap state))
+          put (BotState state (Internal (buildBoardMap state) (buildSafeBoardMap state)))
           newState <- nextMove bot >>= move state
           playLoop bot newState
