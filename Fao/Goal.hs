@@ -47,7 +47,7 @@ canCaptureMine hero dist = heroLife hero - fromIntegral dist > 20
 canKill :: Hero -> Hero -> Int -> Bool
 canKill assassin victim dist =
     let d = fromIntegral dist
-        assassinLife = if dist `mod` 2 == 1 then heroLife assassin - d else heroLife assassin - 20 - d
+        assassinLife = if dist < 3 || dist `mod` 2 == 1 then heroLife assassin - d else heroLife assassin - 20 - d
         victimLife = heroLife victim - d
     in assassinLife > victimLife
 
