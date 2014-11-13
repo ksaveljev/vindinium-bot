@@ -25,6 +25,13 @@ nextToTavern hero = do
         tavernPositions = getTaverns state
     return $ any (`S.member` adjacentTiles board (heroPos hero)) tavernPositions
 
+enemyNearMine :: Pos -> Fao Bool
+enemyNearMine pos = do
+    (BotState state _ _) <- get
+    let board = gameBoard $ vindiniumGame state
+        enemies = getEnemies state
+    return $ any (`S.member` adjacentTiles board pos) (map heroPos enemies)
+
 heroBoardMap :: Action -> Fao HeroBoardMap
 heroBoardMap action = do
     (BotState state bm sbm) <- get
@@ -34,31 +41,15 @@ heroBoardMap action = do
                 _ -> fromJust $ M.lookup (heroId ourHero) sbm
     return hbm
 
-{-
+canCaptureMine :: Hero -> Int -> Bool
+canCaptureMine hero dist = heroLife hero - fromIntegral dist > 20
+
 canKill :: Hero -> Hero -> Int -> Bool
 canKill assassin victim dist =
-    let assassinLife = fromIntegral $ heroLife assassin
-        victimLife = fromIntegral $ heroLife victim
-    in assassinLife - dist > victimLife + 20
-    -}
-
-{-
-needToHeal :: Hero -> Int -> Bool
-needToHeal hero enemyDistance = if enemyDistance > 1
-                                  then heroLife hero < 21
-                                  else True
-                                  -}
-
-{-
-loseEverything :: Hero -> Int
-loseEverything hero = negate (10 * fromIntegral (heroMineCount hero))
-
-tooMuchHealth :: Hero -> Bool
-tooMuchHealth hero = heroLife hero > 90
-
-canCaptureMine :: Hero -> Int -> Bool
-canCaptureMine ourHero dist = fromIntegral (heroLife ourHero) - dist > 20
--}
+    let d = fromIntegral dist
+        assassinLife = if dist `mod` 2 == 1 then heroLife assassin - d else heroLife assassin - 20 - d
+        victimLife = heroLife victim - d
+    in assassinLife > victimLife
 
 nearestEnemy :: Fao (Hero, Int)
 nearestEnemy = do
@@ -67,11 +58,15 @@ nearestEnemy = do
     let enemies = getEnemies state
     return $ minimum $ map (\enemy -> maybe (enemy, 9999) (\path -> (enemy, distance path)) (hbm $ heroPos enemy)) enemies
 
+needToHeal :: Hero -> Bool
+needToHeal hero = heroLife hero < 21
+
 goalScore :: Goal -> Fao Int
 goalScore (Goal action pos) = do
     (BotState state _ _) <- get
     let ourHero = vindiniumHero state
     hbm <- heroBoardMap (Kill undefined)
+    hsbm <- heroBoardMap Heal
     (nearestHero, distNearestHero) <- nearestEnemy
     case distNearestHero of
       1 -> do
@@ -87,58 +82,90 @@ goalScore (Goal action pos) = do
                                                             Heal -> return 1000
                                                             _ -> return (-9999)
                                             _ -> case action of
-                                                   (Kill enemy) -> undefined -- TODO
-                                                   Heal -> undefined -- TODO
-                                                   CaptureMine -> undefined -- TODO
+                                                   (Kill enemy) | enemy == nearestHero -> return (-9999)
+                                                   (Kill enemy) -> let d = maybe 9999 distance (hbm pos)
+                                                                  in if d < 3
+                                                                       then if canKill ourHero enemy d
+                                                                              then return $ 10 * fromIntegral (heroMineCount enemy)
+                                                                              else return (-9999)
+                                                                       else return (-9999)
+                                                   Heal -> let d = maybe 9999 distance (hsbm pos)
+                                                          in if needToHeal ourHero
+                                                               then return 1000
+                                                               else return d
+                                                   CaptureMine -> let d = maybe 9999 distance (hsbm pos)
+                                                                 in if canCaptureMine ourHero d
+                                                                      then return (100 - d)
+                                                                      else return (-9999)
                    | otherwise -> case action of
-                                    Heal -> undefined -- TODO
+                                    Heal -> return 1000
                                     _ -> return (-9999)
-          else undefined
-      2 -> undefined
-      _ -> undefined
-
-{-
-goalScore :: Goal -> Fao Int
-goalScore (Goal Heal pos) = do
-    (BotState state _ _) <- get
-    hbm <- heroBoardMap Heal
-    enemyDistance <- nearestEnemy
-    let ourHero = vindiniumHero state
-        calculateScore path =
-          let dist = distance path
-          in case () of
-               _
-                | needToHeal ourHero enemyDistance -> 9999 -- negate (loseEverything ourHero)
-                | tooMuchHealth ourHero -> loseEverything ourHero
-                | dist > 1 -> dist
-                | otherwise -> if heroLife ourHero < 81 then 9999 else dist * (-20)
-    return $ maybe (-9999) calculateScore (hbm pos)
-
-goalScore (Goal CaptureMine pos) = do
-    (BotState state _ _) <- get
-    hbm <- heroBoardMap CaptureMine
-    enemyDistance <- nearestEnemy
-    let ourHero = vindiniumHero state
-        calculateScore path =
-          let dist = distance path
-          in if canCaptureMine ourHero dist
-               then if enemyDistance > 1
-                      then 100
-                      else 100 - (100 `div` enemyDistance)
-               else loseEverything ourHero
-    return $ maybe (-9999) calculateScore (hbm pos)
-
-goalScore (Goal (Kill enemy) pos) = do
-    (BotState state _ _) <- get
-    hbm <- heroBoardMap (Kill enemy)
-    let ourHero = vindiniumHero state
-        calculateScore path =
-          let dist = distance path
-          in if dist < 7 && canKill ourHero enemy dist
-               then negate (loseEverything enemy)
-               else loseEverything ourHero
-    return $ maybe (-9999) calculateScore (hbm pos)
-    -}
+          -- there is no tavern next to the nearest enemy
+          else
+            if canKill ourHero nearestHero distNearestHero
+              then case action of
+                     (Kill enemy) | enemy == nearestHero -> return 1000
+                     _ -> return (-9999)
+              else case action of
+                     Heal -> return 1000
+                     _ -> return (-9999)
+      2 -> do
+        enemyNearTavern <- nextToTavern nearestHero
+        if enemyNearTavern
+          then case action of
+                 (Kill enemy) | enemy == nearestHero -> return (-9999)
+                 (Kill enemy) -> let d = maybe 9999 distance (hbm pos)
+                                in if d < 3
+                                     then if canKill ourHero enemy d
+                                            then return $ 10 * fromIntegral (heroMineCount enemy)
+                                            else return (-9999)
+                                     else return (-9999)
+                 Heal -> let d = maybe 9999 distance (hsbm pos)
+                        in if needToHeal ourHero
+                             then return 1000
+                             else return d
+                 CaptureMine -> let d = maybe 9999 distance (hsbm pos)
+                               in if canCaptureMine ourHero d
+                                    then return (100 - d)
+                                    else return (-9999)
+          else
+            if canKill ourHero nearestHero distNearestHero
+              then case action of
+                     (Kill enemy) | enemy == nearestHero -> return 1000 -- need to try killing this enemy
+                     _ -> return (-9999)
+              else case action of
+                     (Kill enemy) | enemy == nearestHero -> return (-9999)
+                     (Kill enemy) -> let d = maybe 9999 distance (hbm pos)
+                                    in if d < 3
+                                         then if canKill ourHero enemy d
+                                                then return $ 10 * fromIntegral (heroMineCount enemy)
+                                                else return (-9999)
+                                         else return (-9999)
+                     Heal -> let d = maybe 9999 distance (hsbm pos)
+                            in if needToHeal ourHero
+                                 then return 1000
+                                 else return d
+                     CaptureMine -> let d = maybe 9999 distance (hsbm pos)
+                                   in if canCaptureMine ourHero d
+                                        then return (100 - d)
+                                        else return (-9999)
+      _ -> case action of
+             (Kill _) -> return (-9999) -- not going to run towards the enemy if he is far away
+             Heal -> do
+               ourHeroNearTavern <- nextToTavern ourHero
+               case () of
+                 _ | ourHeroNearTavern && heroLife ourHero < 90 -> return 1000
+                   | needToHeal ourHero -> return 1000
+                   | otherwise -> let d = maybe 9999 distance (hsbm pos)
+                                 in return d
+             CaptureMine -> let d = maybe 9999 distance (hsbm pos)
+                           in do
+                             mineProtected <- enemyNearMine pos
+                             if mineProtected
+                               then return 50
+                               else if canCaptureMine ourHero d
+                                      then return 100
+                                      else return (-9999)
 
 getGoals :: Fao [Goal]
 getGoals = do
