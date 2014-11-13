@@ -1,6 +1,6 @@
 module Fao.Bot where
 
-import Data.List (sortBy)
+import Data.List (sortBy, intercalate)
 import Data.Maybe (fromJust)
 import Control.Monad.State (get)
 import System.Log.FastLogger
@@ -27,24 +27,18 @@ bot = Bot { initialize = return ()
                                                 EQ -> compare d1 d2
                                                 LT -> GT
                                                 GT -> LT
-          bestGoals = take 5 $ sortBy goalValue goalStats
-          reachableGoal g@(Goal action pos, _, _) = do
-            hbm <- heroBoardMap action
-            let path = hbm pos
-            case path of
-              Nothing -> return Nothing
-              _ -> return $ Just g
+          bestGoals = take 50 $ sortBy goalValue goalStats
       bestAvailableGoal <- findM reachableGoal bestGoals
       liftIO $ pushLogStr globalLogger $ 
         toLogStr ("Turn number: " ++ show ((gameTurn . vindiniumGame) state) ++ "\n" ++
                   "Our hero: health = " ++ show (heroLife ourHero) ++ "\n" ++
-                  "Best goals: " ++ show bestGoals ++ "\n" ++
-                  "Best available goal: " ++ show bestAvailableGoal ++ "\n"
+                  "Best goals: " ++ intercalate ", " (map showGoal bestGoals) ++ "\n" ++
+                  "Best available goal: " ++ maybe "" showGoal bestAvailableGoal ++ "\n"
                  )
       case bestAvailableGoal of
         Nothing -> return Stay
         (Just (Goal action pos, s, _)) -> do
-          hbm <- heroBoardMap action
+          hbm <- ourHeroBoardMap action
           return $ if s > 0
                      then walk ourHero (fromJust $ hbm pos)
                      else Stay

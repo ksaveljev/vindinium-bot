@@ -47,7 +47,7 @@ runCmd c  = do
         case c of
             (Training _ t b) -> playTraining t b bot
             (Arena _)        -> playArena bot
-    pushLogStr globalLogger $ toLogStr $ "Game finished: " ++ unpack (vindiniumViewUrl s)
+    pushLogStr globalLogger $ toLogStr $ "Game finished: " ++ unpack (vindiniumViewUrl s) ++ "\n"
     flushLogStr globalLogger
 
 main :: IO ()

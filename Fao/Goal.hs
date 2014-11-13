@@ -1,14 +1,19 @@
 module Fao.Goal ( getGoals
                 , goalScore
                 , goalDistance
-                , heroBoardMap
+                , ourHeroBoardMap
                 , Goal (..)
+                , showGoal
+                , reachableGoal
                 ) where
 
+import Data.List (minimumBy)
+import Data.Function (on)
 import Data.Maybe (fromJust)
 import Control.Monad.State (get)
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.Text as T
 
 import Fao.Pathfinding
 import Fao.Types
@@ -17,6 +22,11 @@ import Fao.Utils
 data Action = Heal | Kill Hero | CaptureMine deriving (Show)
 
 data Goal = Goal Action Pos deriving (Show)
+
+showGoal :: (Goal, Int, Int) -> String
+showGoal (Goal CaptureMine _, score, dist) = "CaptureMine (" ++ show score ++ ") [" ++ show dist ++ "]"
+showGoal (Goal Heal _, score, dist) = "Heal (" ++ show score ++ ") [" ++ show dist ++ "]"
+showGoal (Goal (Kill enemy) _, score, dist) = "Kill " ++ T.unpack (heroName enemy) ++ " life = " ++ show (heroLife enemy) ++ " (" ++ show score ++ ") [" ++ show dist ++ "]"
 
 nextToTavern :: Hero -> Fao Bool
 nextToTavern hero = do
@@ -32,13 +42,18 @@ enemyNearMine pos = do
         enemies = getEnemies state
     return $ any (`S.member` adjacentTiles board pos) (map heroPos enemies)
 
-heroBoardMap :: Action -> Fao HeroBoardMap
-heroBoardMap action = do
-    (BotState state (Internal bm sbm)) <- get
+ourHeroBoardMap :: Action -> Fao HeroBoardMap
+ourHeroBoardMap action = do
+    (BotState state _) <- get
     let ourHero = vindiniumHero state
-        hbm = case action of
-                (Kill _) -> fromJust $ M.lookup (heroId ourHero) bm
-                _ -> fromJust $ M.lookup (heroId ourHero) sbm
+    heroBoardMap ourHero action
+
+heroBoardMap :: Hero -> Action -> Fao HeroBoardMap
+heroBoardMap hero action = do
+    (BotState _ (Internal bm sbm)) <- get
+    let hbm = case action of
+                (Kill _) -> fromJust $ M.lookup (heroId hero) bm
+                _ -> fromJust $ M.lookup (heroId hero) sbm
     return hbm
 
 canCaptureMine :: Hero -> Int -> Bool
@@ -54,19 +69,60 @@ canKill assassin victim dist =
 nearestEnemy :: Fao (Hero, Int)
 nearestEnemy = do
     (BotState state _) <- get
-    hbm <- heroBoardMap (Kill undefined)
+    let ourHero = vindiniumHero state
+    nearestEnemyTo (heroPos ourHero)
+
+nearestEnemyTo :: Pos -> Fao (Hero, Int)
+nearestEnemyTo pos = do
+    (BotState state _) <- get
     let enemies = getEnemies state
-    return $ minimum $ map (\enemy -> maybe (enemy, 9999) (\path -> (enemy, distance path)) (hbm $ heroPos enemy)) enemies
+        enemyToDistance enemy = do
+          hbm <- heroBoardMap enemy (Kill undefined)
+          return $ maybe (enemy, 9999) (\path -> (enemy, distance path)) (hbm pos)
+    enemyDistances <- mapM enemyToDistance enemies
+    return $ minimumBy (compare `on` snd) enemyDistances
 
 needToHeal :: Hero -> Bool
 needToHeal hero = heroLife hero < 21
+
+reachableGoal :: (Goal, Int, Int) -> Fao (Maybe (Goal, Int, Int))
+reachableGoal goal@(Goal action pos, _, _) = do
+    (BotState state _) <- get
+    hbm <- ourHeroBoardMap action
+    let ourHero = vindiniumHero state
+        path = hbm pos
+    case path of
+      Nothing -> return Nothing
+      Just (Path p) -> do
+        let nextPos = head p
+        (nearestHero, distNearestHero) <- nearestEnemyTo nextPos
+        case action of
+          Heal -> do
+            ourHeroNearTavern <- nextToTavern ourHero
+            if ourHeroNearTavern
+              then return $ Just goal
+              else if distNearestHero == 2
+                     then if canKill ourHero nearestHero distNearestHero
+                            then return $ Just goal
+                            else return Nothing
+                     else do
+                       (_, distNearestTavernHero) <- nearestEnemyTo pos
+                       if distNearestTavernHero < 3
+                         then return Nothing
+                         else return $ Just goal
+          CaptureMine -> if distNearestHero == 2
+                           then if canKill ourHero nearestHero distNearestHero
+                                  then return $ Just goal
+                                  else return Nothing
+                           else return $ Just goal
+          (Kill _) -> return $ Just goal
 
 goalScore :: Goal -> Fao Int
 goalScore (Goal action pos) = do
     (BotState state _) <- get
     let ourHero = vindiniumHero state
-    hbm <- heroBoardMap (Kill undefined)
-    hsbm <- heroBoardMap Heal
+    hbm <- ourHeroBoardMap (Kill undefined)
+    hsbm <- ourHeroBoardMap Heal
     (nearestHero, distNearestHero) <- nearestEnemy
     case distNearestHero of
       -- we are standing next to an enemy, this means that we cannot run
@@ -241,6 +297,6 @@ getTaverns s = taverns $ gameBoard $ vindiniumGame s
 
 goalDistance :: Goal -> Fao Int
 goalDistance (Goal action pos) = do
-    hbm <- heroBoardMap action
+    hbm <- ourHeroBoardMap action
     let path = hbm pos
     return $ maybe 9999 distance path
