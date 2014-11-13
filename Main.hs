@@ -6,10 +6,12 @@ import Data.String (fromString)
 import Data.Text (pack, unpack)
 import Network.Socket (withSocketsDo)
 import Control.Monad (liftM)
+import System.Log.FastLogger
 
 import Fao.Bot
 import Fao.Types
 import Fao.Play
+import Fao.Utils
 
 data Cmd = Training Settings (Maybe Int) (Maybe Board)
          | Arena Settings
@@ -45,7 +47,7 @@ runCmd c  = do
         case c of
             (Training _ t b) -> playTraining t b bot
             (Arena _)        -> playArena bot
-    putStrLn $ "Game finished: " ++ unpack (vindiniumViewUrl s)
+    pushLogStr globalLogger $ toLogStr $ "Game finished: " ++ unpack (vindiniumViewUrl s)
 
 main :: IO ()
 main = withSocketsDo $
