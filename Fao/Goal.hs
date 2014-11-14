@@ -124,7 +124,7 @@ needToHeal hero = heroLife hero < 21
 -- actually reachable for our hero (see Bot.hs for soring and selecting the
 -- best reachable goal)
 reachableGoal :: (Goal, Int, Int) -> Fao (Maybe (Goal, Int, Int))
-reachableGoal goal@(Goal action pos, _, _) = do
+reachableGoal goal@(Goal action pos, _, dist) = do
     (BotState state _) <- get
     -- we grab a map which uses direct shortest path if the action is Kill
     -- and the safe shortest path (avoiding enemies) when the action is
@@ -169,9 +169,26 @@ reachableGoal goal@(Goal action pos, _, _) = do
                      -- cause if there is someone they might kill us and we
                      -- should try selecting other tavern which is more safe
                      else do
-                       (_, distNearestTavernHero) <- nearestEnemyTo pos
+                       (nearestTavernHero, distNearestTavernHero) <- nearestEnemyTo pos
                        if distNearestTavernHero < 3
-                         then return Nothing
+                         -- so the enemy is near the tavern, but before dismissing this
+                         -- tavern we need to check if we can reach it before the enemy
+                         -- can attack us (this situation may arise when there is only
+                         -- 1 square between our hero and the tavern, and the enemy is on
+                         -- the other side of the tavern, so he cannot reach us in time)
+                         --
+                         -- TODO: we must also think about our health, we might reach the
+                         -- tavern taking a few hits on our way!!! but right now it seems
+                         -- we avoid going to the tavern even with enough health to take
+                         -- a beating
+                         then do
+                           ebm <- heroBoardMap nearestTavernHero (Kill undefined)
+                           let ourHeroFinalDestination = last p
+                           case (ebm ourHeroFinalDestination) of
+                             Nothing -> return $ Just goal
+                             Just enemyPath -> if dist < distance enemyPath
+                                                 then return $ Just goal
+                                                 else return Nothing
                          else return $ Just goal
           -- for capture mine goal there is the same special case we want
           -- to look at: when there are two empty squares between us and
