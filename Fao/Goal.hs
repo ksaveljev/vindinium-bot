@@ -161,7 +161,7 @@ reachableGoal goal@(Goal action pos, _, dist) = do
               -- may attack us on his next move if he wishes and we do not 
               -- want to end up in a losing situation
               else if distNearestHero == 2
-                     then if canKill ourHero nearestHero distNearestHero
+                     then if canKill ourHero nearestHero (distNearestHero + 1)
                             then return $ Just goal
                             else return Nothing
                      -- in all other situations we want to have a look if
