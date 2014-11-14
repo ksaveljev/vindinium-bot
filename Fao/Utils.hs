@@ -21,6 +21,12 @@ tileAt b p@(Pos x y) =
   where
     idx = x * boardSize b + y
 
+isMineTileAt :: Board -> Pos -> Bool
+isMineTileAt board pos =
+    case tileAt board pos of
+      Just (MineTile _) -> True
+      _ -> False
+
 inBoard :: Board -> Pos -> Bool
 inBoard b (Pos x y) =
     let s = boardSize b

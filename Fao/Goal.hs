@@ -151,6 +151,7 @@ reachableGoal goal@(Goal action pos, _, dist) = do
     -- something other than Kill
     hbm <- ourHeroBoardMap action
     let ourHero = vindiniumHero state
+        board = gameBoard $ vindiniumGame state
         path = hbm pos
     -- first thing we check if we actually can reach the goal position
     -- using our shortest path HeroBoardMap
@@ -216,7 +217,7 @@ reachableGoal goal@(Goal action pos, _, dist) = do
           -- which means that if we take this path the enemy may attack us
           -- on his next move if he wishes and we do not want to end up in
           -- a losing situation
-          CaptureMine -> if distNearestHero == 2
+          CaptureMine -> if distNearestHero == 2 && (isMineTileAt board nextPos)
                            then if canKill ourHero nearestHero (distNearestHero + 1) -- TODO: probably requires a fix for +1 (it might actually not be +1)
                                   then return $ Just goal
                                   else return Nothing
