@@ -197,7 +197,7 @@ reachableGoal goal@(Goal action pos, _, dist) = do
           -- on his next move if he wishes and we do not want to end up in
           -- a losing situation
           CaptureMine -> if distNearestHero == 2
-                           then if canKill ourHero nearestHero distNearestHero
+                           then if canKill ourHero nearestHero (distNearestHero + 1)
                                   then return $ Just goal
                                   else return Nothing
                            else return $ Just goal
@@ -254,7 +254,7 @@ goalScore (Goal action pos) = do
                                                                               else return (-9999)
                                                                        else return (-9999)
                                                    -- probably could heal (i think we never reach this branch though)
-                                                   Heal -> let d = maybe 9999 distance (hsbm pos)
+                                                   Heal -> let d = maybe 40 distance (hsbm pos)
                                                           in if needToHeal ourHero
                                                                then return 1000
                                                                else return d
@@ -303,7 +303,7 @@ goalScore (Goal action pos) = do
                                             then return $ 10 * fromIntegral (heroMineCount enemy)
                                             else return (-9999)
                                      else return (-9999)
-                 Heal -> let d = maybe 9999 distance (hsbm pos)
+                 Heal -> let d = maybe 40 distance (hsbm pos)
                         in if needToHeal ourHero
                              then return 1000
                              else return d
@@ -355,7 +355,7 @@ goalScore (Goal action pos) = do
                      -- an existing path towards the selected tavern then
                      -- we simply give it a score equal to distance until
                      -- we can reach it using safe shortest path map
-                   | otherwise -> let d = maybe 9999 distance (hsbm pos)
+                   | otherwise -> let d = maybe 40 distance (hsbm pos)
                                  in return d
              CaptureMine -> let d = maybe 9999 distance (hsbm pos)
                            in do
