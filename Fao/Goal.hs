@@ -128,8 +128,9 @@ nearSpawnPosition :: Hero -> Fao Bool
 nearSpawnPosition hero = do
     hbm <- heroBoardMap hero (Kill undefined)
     let spawnPos = heroSpawnPos hero
+        pos = heroPos hero
         spawnPosDistance = maybe 9999 distance (hbm spawnPos)
-    return $ spawnPosDistance < 2
+    return $ pos == spawnPos || spawnPosDistance == 1
 
 -- basically Heal is dominating command when we are below 21 health because
 -- we cannot do much (cannot attack mines and fighting is pretty hard) but
@@ -182,9 +183,13 @@ reachableGoal goal@(Goal action pos, _, dist) = do
               -- may attack us on his next move if he wishes and we do not 
               -- want to end up in a losing situation
               else if distNearestHero == 2
-                     then if canKill ourHero nearestHero (distNearestHero + 1) -- TODO: probably requires a fix for (+1), it might actually be not +1
+                     -- if there is only one square between us and the tavern
+                     -- we might as well go for it if we have enough life
+                     then if dist == 2 && (heroLife ourHero > 21)
                             then return $ Just goal
-                            else return Nothing
+                            else if canKill ourHero nearestHero (distNearestHero + 1) -- TODO: probably requires a fix for (+1), it might actually be not +1
+                                   then return $ Just goal
+                                   else return Nothing
                      -- in all other situations we want to have a look if
                      -- the tavern we are moving to has any enemies near it
                      -- cause if there is someone they might kill us and we
@@ -296,6 +301,9 @@ goalScore (Goal action pos) = do
           -- there is no tavern next to the nearest enemy so we are simply
           -- facing him in a fight
           else
+            -- TODO: if the enemy is near the spawn position we do not wish
+            -- to attack it -> consider doing something more useful
+            --
             -- if we can kill him then it is our priority and nothing else matters
             if canKill ourHero nearestHero distNearestHero
               then case action of
