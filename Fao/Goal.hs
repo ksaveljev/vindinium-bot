@@ -309,6 +309,7 @@ goalScore (Goal action pos) = do
       2 -> do
         -- we need to know if the enemy is standing next to a tavern
         enemyCanHeal <- canHeal nearestHero
+        ourHeroCanHeal <- canHeal ourHero
         -- and if the enemy is
         if enemyCanHeal
           then case action of
@@ -354,10 +355,21 @@ goalScore (Goal action pos) = do
                                                 then return $ 10 * fromIntegral (heroMineCount enemy)
                                                 else return (-9999)
                                          else return (-9999)
-                     Heal -> let d = maybe 9999 distance (hsbm pos)
-                            in if needToHeal ourHero
-                                 then return 1000
-                                 else return (100 - d)
+                     -- TODO: we should also consider a case where we have
+                     -- enough health to reach the tavern taking a few hits
+                     -- along the way
+                     Heal -> if ourHeroCanHeal
+                               then if needToHeal ourHero
+                                      then return 1000
+                                      else return 99
+                               else case hsbm pos of
+                                 Nothing -> return (-9999)
+                                 Just path@(Path p) -> do
+                                   ebm <- heroBoardMap nearestHero (Kill undefined)
+                                   let enemyDistance = maybe 9999 distance (ebm $ last (init p))
+                                   if distance path < enemyDistance
+                                     then return (100 - distance path)
+                                     else return (-9999)
                      -- distance between us and the enemy is just one
                      -- square and we cannot kill him, so we cannot waste
                      -- time on grabbing some mine and losing even more
