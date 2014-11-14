@@ -124,6 +124,13 @@ nearestEnemyTo pos = do
     enemyDistances <- mapM enemyToDistance enemies
     return $ minimumBy (compare `on` snd) enemyDistances
 
+nearSpawnPosition :: Hero -> Fao Bool
+nearSpawnPosition hero = do
+    hbm <- heroBoardMap hero (Kill undefined)
+    let spawnPos = heroSpawnPos hero
+        spawnPosDistance = maybe 9999 distance (hbm spawnPos)
+    return $ spawnPosDistance < 2
+
 -- basically Heal is dominating command when we are below 21 health because
 -- we cannot do much (cannot attack mines and fighting is pretty hard) but
 -- there may be situations when killing an enemy might take over the
@@ -324,9 +331,14 @@ goalScore (Goal action pos) = do
                                in if canCaptureMine ourHero d
                                     then return (100 - d)
                                     else return (-9999)
-          else
+          else do
             -- enemy is not near the tavern so we can try killing him
-            if canKill ourHero nearestHero distNearestHero
+            -- although if this enemy is near the spawn point then we would
+            -- like not to risk it and leave him alone
+            -- TODO: em, maybe take into account how many mines this enemy
+            -- has and we can kill him and successfully escape afterwards
+            enemyNearSpawnPosition <- nearSpawnPosition nearestHero
+            if (not enemyNearSpawnPosition) && canKill ourHero nearestHero distNearestHero
               then case action of
                      (Kill enemy) | enemy == nearestHero -> return 1000 -- need to try killing this enemy
                      _ -> return (-9999)
