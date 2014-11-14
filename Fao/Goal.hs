@@ -331,11 +331,12 @@ goalScore (Goal action pos) = do
                      Heal -> let d = maybe 9999 distance (hsbm pos)
                             in if needToHeal ourHero
                                  then return 1000
-                                 else return d
-                     CaptureMine -> let d = maybe 9999 distance (hsbm pos)
-                                   in if canCaptureMine ourHero d
-                                        then return (100 - d)
-                                        else return (-9999)
+                                 else return (100 - d)
+                     -- distance between us and the enemy is just one
+                     -- square and we cannot kill him, so we cannot waste
+                     -- time on grabbing some mine and losing even more
+                     -- health
+                     CaptureMine -> return (-9999)
       -- there is no enemy near us (dist > 2)
       _ -> case action of
              -- we are not going to go for any enemy (although need to
