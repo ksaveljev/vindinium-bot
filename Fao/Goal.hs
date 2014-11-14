@@ -29,6 +29,7 @@ showGoal (Goal CaptureMine _, score, dist) = "CaptureMine (" ++ show score ++ ")
 showGoal (Goal Heal _, score, dist) = "Heal (" ++ show score ++ ") [" ++ show dist ++ "]"
 showGoal (Goal (Kill enemy) _, score, dist) = "Kill " ++ T.unpack (heroName enemy) ++ " life = " ++ show (heroLife enemy) ++ " (" ++ show score ++ ") [" ++ show dist ++ "]"
 
+{-
 -- find out if there is someone near a tavern (it might be our hero or an
 -- enemy), this information is useful for us to make correct decisions in
 -- different situations
@@ -42,6 +43,18 @@ nextToTavern hero = do
     let board = gameBoard $ vindiniumGame state
         tavernPositions = getTaverns state
     return $ any (`S.member` adjacentTiles board (heroPos hero)) tavernPositions
+    -}
+
+-- hero can be near the tavern (on adjacent tile) but he may not be able to
+-- use it as his position might be on a diagonal adjacent tile, so this
+-- method tells us if the given hero can actually heal using the tavern
+canHeal :: Hero -> Fao Bool
+canHeal hero = do
+    (BotState state _) <- get
+    hbm <- heroBoardMap hero (Kill undefined) -- grab the direct shortest path map (and not the safe one)
+    let tavernPositions = getTaverns state
+        nearestTavernDistance = minimum $ map (maybe 9999 distance . hbm) tavernPositions
+    return $ nearestTavernDistance == 1
 
 -- find out if there is an enemy somewhere near the mine as we do not want
 -- to try and conquer that particular mine due to the high risk of fighting
@@ -146,8 +159,8 @@ reachableGoal goal@(Goal action pos, _, dist) = do
         -- and think differently depending on the goal we are about to reach
         case action of
           Heal -> do
-            ourHeroNearTavern <- nextToTavern ourHero
-            if ourHeroNearTavern
+            ourHeroCanHeal <- canHeal ourHero
+            if ourHeroCanHeal
               -- if our hero is near the tavern then we do not need to
               -- think and proceed with healing
               then return $ Just goal
@@ -161,7 +174,7 @@ reachableGoal goal@(Goal action pos, _, dist) = do
               -- may attack us on his next move if he wishes and we do not 
               -- want to end up in a losing situation
               else if distNearestHero == 2
-                     then if canKill ourHero nearestHero (distNearestHero + 1)
+                     then if canKill ourHero nearestHero (distNearestHero + 1) -- TODO: probably requires a fix for (+1), it might actually be not +1
                             then return $ Just goal
                             else return Nothing
                      -- in all other situations we want to have a look if
@@ -197,7 +210,7 @@ reachableGoal goal@(Goal action pos, _, dist) = do
           -- on his next move if he wishes and we do not want to end up in
           -- a losing situation
           CaptureMine -> if distNearestHero == 2
-                           then if canKill ourHero nearestHero (distNearestHero + 1)
+                           then if canKill ourHero nearestHero (distNearestHero + 1) -- TODO: probably requires a fix for +1 (it might actually not be +1)
                                   then return $ Just goal
                                   else return Nothing
                            else return $ Just goal
@@ -221,10 +234,10 @@ goalScore (Goal action pos) = do
         -- we get the information if the enemy is near the tavern or our
         -- hero is near the tavern, going to use this info when making
         -- decisions below
-        enemyNearTavern <- nextToTavern nearestHero
-        ourHeroNearTavern <- nextToTavern ourHero
+        enemyCanHeal <- canHeal nearestHero
+        ourHeroCanHeal <- canHeal ourHero
         -- so, the enemy is near the tavern, pretty bad situation
-        if enemyNearTavern
+        if enemyCanHeal
           then case () of
                  -- but if the enemy is low on health then we can kill it!
                  _ | heroLife nearestHero <= 20 -> case action of
@@ -235,7 +248,7 @@ goalScore (Goal action pos) = do
                  -- our hero is also near a tavern! some maps can have this
                  -- situation, so we need to somehow handle this case and
                  -- try not to stay at the tavern for the rest of the game
-                   | ourHeroNearTavern -> case heroLife ourHero of
+                   | ourHeroCanHeal -> case heroLife ourHero of
                                             -- if our health is somewhat low we must heal, nothing else
                                             x | x < 70 -> case action of
                                                             Heal -> return 1000
@@ -287,9 +300,9 @@ goalScore (Goal action pos) = do
       -- there is a 1 move gap between our hero and the nearest enemy
       2 -> do
         -- we need to know if the enemy is standing next to a tavern
-        enemyNearTavern <- nextToTavern nearestHero
+        enemyCanHeal <- canHeal nearestHero
         -- and if the enemy is
-        if enemyNearTavern
+        if enemyCanHeal
           then case action of
                  -- then there is no point in attacking it
                  (Kill enemy) | enemy == nearestHero -> return (-9999)
@@ -343,11 +356,11 @@ goalScore (Goal action pos) = do
              -- update this to check the situation when dist == 3)
              (Kill _) -> return (-9999)
              Heal -> do
-               ourHeroNearTavern <- nextToTavern ourHero
+               ourHeroCanHeal <- canHeal ourHero
                case () of
                      -- heal full when we are at the tavern already and our
                      -- health is not near full
-                 _ | ourHeroNearTavern && heroLife ourHero < 90 -> return 1000
+                 _ | ourHeroCanHeal && heroLife ourHero < 90 -> return 1000
                      -- our health is really low so we need to make Heal
                      -- action as our priority
                    | needToHeal ourHero -> return 1000
