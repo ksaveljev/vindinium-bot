@@ -53,4 +53,5 @@ executable faorien
                      , PSQueue
                      , parallel
                      , fast-logger
+                     , lens
   default-language:    Haskell2010

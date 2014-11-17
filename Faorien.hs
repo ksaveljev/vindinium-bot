@@ -4,6 +4,9 @@ module Main (main) where
 import Data.String (fromString)
 import Data.Text (pack, unpack)
 import Options.Applicative
+import Control.Monad (liftM)
+import Control.Lens ((^.))
+import Network.Socket (withSocketsDo)
 
 import Faorien.Types
 import Faorien.Bot
@@ -18,7 +21,7 @@ cmdSettings (Training s _ _) = s
 cmdSettings (Arena s) = s
 
 settings :: Parser Settings
-settings = Settings <$> (Key <$> argument (str >>= (return . pack)) (metavar "KEY"))
+settings = Settings <$> (Key <$> argument (liftM pack str) (metavar "KEY"))
                     <*> (fromString <$> strOption (long "url" <> value "http://vindinium.org"))
 
 trainingCmd :: Parser Cmd
@@ -39,15 +42,15 @@ cmd = subparser
 
 runCmd :: Cmd -> IO ()
 runCmd c  = do
-    s <- runVindinium (cmdSettings c) $ do
+    s <- runFaorien (cmdSettings c) (BotState undefined undefined) $
         case c of
             (Training _ t b) -> playTraining t b bot
             (Arena _)        -> playArena bot
 
-    putStrLn $ "Game finished: " ++ unpack (stateViewUrl s)
+    putStrLn $ "Game finished: " ++ unpack (s^.activityViewUrl)
 
 main :: IO ()
-main =
+main = withSocketsDo $
     execParser opts >>= runCmd
   where
     opts = info (cmd <**> helper) idm

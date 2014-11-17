@@ -1,22 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Faorien.Api
-        ( startTraining
-        , startArena
-        , move
-        )
-    where
+module Faorien.Api ( startTraining
+                   , startArena
+                   , move
+                   ) where
 
 import Data.Aeson
 import Data.Text (Text, unpack)
 import Data.Monoid ((<>))
 import Network.HTTP.Client
 import Network.HTTP.Types
+import Control.Lens ((^.))
 import Control.Monad (liftM)
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Reader (asks)
 
 import Faorien.Types
 
-startTraining :: Maybe Int -> Maybe Board -> Vindinium State
+startTraining :: Maybe Int -> Maybe Board -> Faorien Activity
 startTraining mi mb = do
     url <- startUrl "training"
     let obj = object ( maybe [] (\i -> [("turns", toJSON i)]) mi
@@ -25,27 +25,27 @@ startTraining mi mb = do
 
     request url obj
 
-move :: State -> Dir -> Vindinium State
+move :: Activity -> Dir -> Faorien Activity
 move s d = do
-    let url = statePlayUrl s
+    let url = s^.activityPlayUrl
         obj = object [("dir", toJSON d)]
 
     request url obj
 
 
-startArena :: Vindinium State
+startArena :: Faorien Activity
 startArena = do
     url <- startUrl "arena"
     let obj = object []
 
     request url obj
 
-startUrl :: Text -> Vindinium Text
-startUrl v = liftM (\x -> x <> "/api/" <> v) $ asks settingsUrl
+startUrl :: Text -> Faorien Text
+startUrl v = liftM (\x -> x <> "/api/" <> v) $ asks _settingsUrl
 
-request :: Text -> Value -> Vindinium State
+request :: Text -> Value -> Faorien Activity
 request url val = do
-    key <- asks settingsKey
+    key <- asks _settingsKey
 
     initReq <- liftIO $ parseUrl $ unpack url
     let req = initReq
@@ -56,6 +56,7 @@ request url val = do
                     , (hUserAgent,   "vindinium-starter-haskell")
                     ]
                 , requestBody = jsonBody (injectKey val key)
+                , responseTimeout = Just 100000000000
                 }
 
     liftIO $ withManager defaultManagerSettings $ \mgr ->
@@ -71,3 +72,4 @@ request url val = do
             (Object b) = object [("key", toJSON k)]
         in
             Object (a <> b)
+    injectKey _ _ = error "invalid object in injectKey method"

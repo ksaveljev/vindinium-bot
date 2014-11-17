@@ -1,86 +1,81 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Faorien.Types
-        ( Vindinium
-        , runVindinium
-        , asks
-        , Settings (..)
-        , Key (..)
-        , Bot
-        , State (..)
-        , GameId (..)
-        , Game (..)
-        , HeroId (..)
-        , Hero (..)
-        , Board (..)
-        , Tile (..)
-        , Pos (..)
-        , Dir (..)
-        )
-    where
+{-# LANGUAGE TemplateHaskell #-}
+module Faorien.Types where
 
 import Data.Text (Text, pack)
 import Data.Aeson
 import Data.Monoid ((<>))
+import Control.Lens (makeLenses)
 import Control.Monad (mzero)
-import Control.Monad.Reader (MonadReader, ReaderT, runReaderT, asks)
+import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
+import Control.Monad.State (MonadState, StateT, evalStateT)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Applicative (Applicative, (<$>), (<*>))
 
 newtype Key = Key Text deriving (Show, Eq)
 
 data Settings = Settings {
-    settingsKey :: Key
-  , settingsUrl :: Text
+    _settingsKey :: Key
+  , _settingsUrl :: Text
 } deriving (Show, Eq)
 
-newtype Vindinium a = Vindinium { unVindinium :: ReaderT Settings IO a }
-    deriving (Functor, Applicative, Monad, MonadReader Settings, MonadIO)
+newtype Faorien a = Faorien { unFaorien :: StateT BotState (ReaderT Settings IO) a }
+    deriving (Functor, Applicative, Monad, MonadReader Settings, MonadState BotState, MonadIO)
 
-runVindinium :: Settings -> Vindinium a -> IO a
-runVindinium s = flip runReaderT s . unVindinium
+runFaorien :: Settings -> BotState -> Faorien a -> IO a
+runFaorien settings state = flip runReaderT settings . flip evalStateT state . unFaorien
 
-type Bot = State -> Vindinium Dir
+data Bot = Bot { initialize :: Faorien ()
+               , turn :: Faorien Dir
+               }
 
-data State = State {
-    stateGame    :: Game
-  , stateHero    :: Hero
-  , stateToken   :: Text
-  , stateViewUrl :: Text
-  , statePlayUrl :: Text
+data BotState = BotState { _session :: Activity
+                         , _internal :: Internal
+                         }
+
+data Internal = Internal {
+                         }
+
+data Activity = Activity {
+    _activityGame    :: Game
+  , _activityHero    :: Hero
+  , _activityToken   :: Text
+  , _activityViewUrl :: Text
+  , _activityPlayUrl :: Text
 } deriving (Show, Eq)
 
 newtype GameId = GameId Text
     deriving (Show, Eq)
 
 data Game = Game {
-    gameId       :: GameId
-  , gameTurn     :: Integer
-  , gameMaxTurns :: Integer
-  , gameHeroes   :: [Hero]
-  , gameBoard    :: Board
-  , gameFinished :: Bool
+    _gameId       :: GameId
+  , _gameTurn     :: Integer
+  , _gameMaxTurns :: Integer
+  , _gameHeroes   :: [Hero]
+  , _gameBoard    :: Board
+  , _gameFinished :: Bool
 } deriving (Show, Eq)
 
 newtype HeroId = HeroId Int
     deriving (Show, Eq)
 
 data Hero = Hero {
-    heroId        :: HeroId
-  , heroName      :: Text
-  , heroUserId    :: Maybe Text
-  , heroElo       :: Maybe Integer
-  , heroPos       :: Pos
-  , heroLife      :: Integer
-  , heroGold      :: Integer
-  , heroMineCount :: Integer
-  , heroSpawnPos  :: Pos
-  , heroCrashed   :: Bool
+    _heroId        :: HeroId
+  , _heroName      :: Text
+  , _heroUserId    :: Maybe Text
+  , _heroElo       :: Maybe Integer
+  , _heroPos       :: Pos
+  , _heroLife      :: Integer
+  , _heroGold      :: Integer
+  , _heroMineCount :: Integer
+  , _heroSpawnPos  :: Pos
+  , _heroCrashed   :: Bool
 } deriving (Show, Eq)
 
 data Board = Board {
-    boardSize  :: Int
-  , boardTiles :: [Tile]
+    _boardSize  :: Int
+  , _boardTiles :: [Tile]
 } deriving (Show, Eq)
 
 data Tile = FreeTile
@@ -91,8 +86,8 @@ data Tile = FreeTile
     deriving (Show, Eq)
 
 data Pos = Pos {
-    posX :: Int
-  , posY :: Int
+    _posX :: Int
+  , _posY :: Int
 } deriving (Show, Eq)
 
 data Dir = Stay | North | South | East | West
@@ -102,16 +97,16 @@ instance ToJSON Key where
     toJSON (Key k) = String k
 
 instance ToJSON Board where
-    toJSON b  = object [ "size"  .= boardSize b
-                       , "tiles" .= (printTiles $ boardTiles b)
+    toJSON b  = object [ "size"  .= _boardSize b
+                       , "tiles" .= printTiles (_boardTiles b)
                        ]
 
-instance FromJSON State where
-    parseJSON (Object o) = State <$> o .: "game"
-                                 <*> o .: "hero"
-                                 <*> o .: "token"
-                                 <*> o .: "viewUrl"
-                                 <*> o .: "playUrl"
+instance FromJSON Activity where
+    parseJSON (Object o) = Activity <$> o .: "game"
+                                    <*> o .: "hero"
+                                    <*> o .: "token"
+                                    <*> o .: "viewUrl"
+                                    <*> o .: "playUrl"
     parseJSON _ = mzero
 
 instance FromJSON Game where
@@ -162,7 +157,7 @@ parseBoard s t =
     Board s $ map parse (chunks t)
   where
     chunks []       = []
-    chunks (_:[])   = error "chunks: even chars number"
+    chunks [_]      = error "chunks: even chars number"
     chunks (a:b:xs) = (a, b):chunks xs
 
     parse (' ', ' ') = FreeTile
@@ -171,7 +166,7 @@ parseBoard s t =
     parse ('[', ']') = TavernTile
     parse ('$', '-') = MineTile Nothing
     parse ('$', x)   = MineTile $ Just $ HeroId $ read [x]
-    parse (a, b)     = error $ "parse: unknown tile pattern " ++ (show $ a:b:[])
+    parse (a, b)     = error $ "parse: unknown tile pattern " ++ show [a,b]
 
 printTiles :: [Tile] -> Text
 printTiles =
@@ -179,7 +174,16 @@ printTiles =
   where
     printTile FreeTile = "  "
     printTile WoodTile = "##"
-    printTile (HeroTile (HeroId i)) = "@" <> (pack $ show i)
+    printTile (HeroTile (HeroId i)) = "@" <> pack (show i)
     printTile TavernTile = "[]"
     printTile (MineTile Nothing) = "$-"
-    printTile (MineTile (Just (HeroId i))) = "$" <> (pack $ show i)
+    printTile (MineTile (Just (HeroId i))) = "$" <> pack (show i)
+
+makeLenses ''Settings
+makeLenses ''Activity
+makeLenses ''Game
+makeLenses ''Hero
+makeLenses ''Board
+makeLenses ''Pos
+makeLenses ''BotState
+makeLenses ''Internal

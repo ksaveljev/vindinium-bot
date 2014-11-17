@@ -2,19 +2,28 @@ module Faorien.Play ( playTraining
                     , playArena
                     ) where
 
+import Control.Lens ((^.), (.=))
+
 import Faorien.Types
 import Faorien.Api
 
-playTraining :: Maybe Int -> Maybe Board -> Bot -> Vindinium State
-playTraining mt mb b = startTraining mt mb >>= playLoop b
+playTraining :: Maybe Int -> Maybe Board -> Bot -> Faorien Activity
+playTraining mt mb = playMain $ startTraining mt mb
 
-playArena :: Bot -> Vindinium State
-playArena b = startArena >>= playLoop b
+playArena :: Bot -> Faorien Activity
+playArena = playMain startArena
 
-playLoop :: Bot -> State -> Vindinium State
-playLoop bot state =
-    if (gameFinished . stateGame) state
-        then return state
+playMain :: Faorien Activity -> Bot -> Faorien Activity
+playMain start bot = do
+    activity <- start
+    session .= activity
+    initialize bot
+    playLoop bot activity
+
+playLoop :: Bot -> Activity -> Faorien Activity
+playLoop bot activity =
+    if activity^.activityGame.gameFinished
+        then return activity
         else do
-            newState <- bot state >>= move state
-            playLoop bot newState
+            newActivity <- turn bot >>= move activity
+            playLoop bot newActivity
