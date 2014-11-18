@@ -12,6 +12,7 @@ import Control.Monad.Reader (MonadReader, ReaderT, runReaderT)
 import Control.Monad.State (MonadState, StateT, evalStateT)
 import Control.Monad.IO.Class (MonadIO)
 import Control.Applicative (Applicative, (<$>), (<*>))
+import qualified Data.Map as M
 
 newtype Key = Key Text deriving (Show, Eq)
 
@@ -37,6 +38,15 @@ data BotState = BotState { _session :: Activity
 data Internal = Internal {
                          }
 
+newtype Path  = Path [Pos] deriving (Show, Eq)
+
+-- Distance function between two positions on a board
+type Distance = Pos -> Pos -> Int
+
+type HeroBoardMap = Pos -> Maybe Path
+
+type BoardMap = M.Map HeroId HeroBoardMap
+
 data Activity = Activity {
     _activityGame    :: Game
   , _activityHero    :: Hero
@@ -58,7 +68,7 @@ data Game = Game {
 } deriving (Show, Eq)
 
 newtype HeroId = HeroId Int
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
 data Hero = Hero {
     _heroId        :: HeroId
@@ -88,7 +98,7 @@ data Tile = FreeTile
 data Pos = Pos {
     _posX :: Int
   , _posY :: Int
-} deriving (Show, Eq)
+} deriving (Show, Eq, Ord)
 
 data Dir = Stay | North | South | East | West
     deriving (Show, Eq)
